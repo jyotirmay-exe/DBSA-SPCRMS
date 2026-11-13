@@ -92,6 +92,8 @@ async def update_user(user_id: int, body: UserUpdate):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
+    if "role" in updates:
+        updates["role"] = _ROLE_MAP.get(updates["role"], updates["role"])
     set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(updates))
     values = list(updates.values())
     row = await pool.fetchrow(
@@ -102,7 +104,9 @@ async def update_user(user_id: int, body: UserUpdate):
     )
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    return dict(row)
+    d = dict(row)
+    d["role"] = d["role"].lower().replace(" ", "_")
+    return d
 
 
 @router.post("/users/{user_id}/reset-password", dependencies=[Depends(require_role("admin"))])
