@@ -59,9 +59,25 @@ async def get_prescription(prescription_id: int, current_user: CurrentUser = Dep
     return dict(row)
 
 
-@router.post("", response_model=PrescriptionOut, dependencies=[Depends(require_role("admin", "doctor"))])
-async def create_prescription(body: PrescriptionCreate):
+@router.post("", response_model=PrescriptionOut)
+async def create_prescription(
+    body: PrescriptionCreate,
+    current_user: CurrentUser = Depends(require_role("admin", "doctor")),
+):
     pool = await get_pool()
+    if current_user.role == "doctor":
+        diag = await pool.fetchrow(
+            """SELECT d.patient_id, a.professional_id
+               FROM diagnosis d JOIN appointment a ON a.appointment_id = d.appointment_id
+               WHERE d.diagnosis_id = $1""",
+            body.diagnosis_id,
+        )
+        if not diag:
+            raise HTTPException(status_code=404, detail="Diagnosis not found")
+        if diag["professional_id"] != current_user.linked_id:
+            raise HTTPException(status_code=403, detail="Diagnosis does not belong to your appointment")
+        if diag["patient_id"] != body.patient_id:
+            raise HTTPException(status_code=400, detail="patient_id does not match diagnosis patient")
     ins = await pool.fetchrow(
         """
         INSERT INTO prescription (diagnosis_id, patient_id, medication_name, dosage, frequency, duration, notes)

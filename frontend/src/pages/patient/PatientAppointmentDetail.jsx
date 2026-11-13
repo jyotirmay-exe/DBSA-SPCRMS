@@ -24,11 +24,11 @@ export default function PatientAppointmentDetail() {
 
   useEffect(() => {
     Promise.all([
-      appointmentsAPI.list(),
+      appointmentsAPI.get(apptId),
       diagnosesAPI.list(),
       prescriptionsAPI.list(),
     ]).then(([a, d, rx]) => {
-      setAppointment(a.data.find(x => x.appointment_id === apptId) || null)
+      setAppointment(a.data)
       setDiagnoses(d.data.filter(x => x.appointment_id === apptId))
       setPrescriptions(rx.data)
     }).catch(() => {}).finally(() => setLoading(false))

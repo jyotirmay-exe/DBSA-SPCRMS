@@ -29,7 +29,11 @@ export default function DiagnosisForm() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      await diagnosesAPI.create(form)
+      await diagnosesAPI.create({
+        ...form,
+        appointment_id: parseInt(form.appointment_id, 10),
+        patient_id: parseInt(form.patient_id, 10),
+      })
       navigate(patientId ? `/doctor/patients/${patientId}` : '/doctor/dashboard')
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to save diagnosis.')

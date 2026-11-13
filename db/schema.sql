@@ -3,6 +3,24 @@
 -- PostgreSQL DDL — Term 1 (structured) + Term 2 (multimodal stubs)
 -- =============================================================
 
+-- =============================================================
+-- DROP ALL TABLES (reverse dependency order for clean reset)
+-- =============================================================
+
+DROP TABLE IF EXISTS lab_report_document       CASCADE;
+DROP TABLE IF EXISTS ecg_audio_record          CASCADE;
+DROP TABLE IF EXISTS medical_image             CASCADE;
+DROP TABLE IF EXISTS notification              CASCADE;
+DROP TABLE IF EXISTS clinical_record           CASCADE;
+DROP TABLE IF EXISTS lab_result                CASCADE;
+DROP TABLE IF EXISTS laboratory_investigation  CASCADE;
+DROP TABLE IF EXISTS prescription              CASCADE;
+DROP TABLE IF EXISTS diagnosis                 CASCADE;
+DROP TABLE IF EXISTS appointment               CASCADE;
+DROP TABLE IF EXISTS user_account              CASCADE;
+DROP TABLE IF EXISTS healthcare_professional   CASCADE;
+DROP TABLE IF EXISTS patient                   CASCADE;
+
 -- Enable pgcrypto for password hashing (optional helper)
 -- CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -51,10 +69,13 @@ CREATE TABLE appointment (
     professional_id INT NOT NULL REFERENCES healthcare_professional(professional_id) ON DELETE RESTRICT,
     scheduled_at    TIMESTAMPTZ NOT NULL,
     status          VARCHAR(20) CHECK (status IN ('Scheduled', 'Completed', 'Cancelled')) NOT NULL DEFAULT 'Scheduled',
-    notes           TEXT,
-    -- FR-04.7: prevent double-booking same doctor same slot
-    UNIQUE (professional_id, scheduled_at)
+    notes           TEXT
 );
+
+-- Prevent double-booking same doctor same slot, but allow rebooking cancelled slots
+CREATE UNIQUE INDEX uq_appointment_slot
+    ON appointment (professional_id, scheduled_at)
+    WHERE status != 'Cancelled';
 
 CREATE TABLE diagnosis (
     diagnosis_id    SERIAL PRIMARY KEY,

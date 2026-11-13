@@ -79,6 +79,19 @@ async def order_investigation(
     current_user: CurrentUser = Depends(require_role("admin", "doctor")),
 ):
     pool = await get_pool()
+    if current_user.linked_id is None:
+        raise HTTPException(status_code=400, detail="Your account is not linked to a professional record. Contact admin.")
+    if current_user.role == "doctor":
+        appt = await pool.fetchrow(
+            "SELECT professional_id, patient_id FROM appointment WHERE appointment_id = $1",
+            body.appointment_id,
+        )
+        if not appt:
+            raise HTTPException(status_code=404, detail="Appointment not found")
+        if appt["professional_id"] != current_user.linked_id:
+            raise HTTPException(status_code=403, detail="Appointment does not belong to you")
+        if appt["patient_id"] != body.patient_id:
+            raise HTTPException(status_code=400, detail="patient_id does not match appointment's patient")
     ins = await pool.fetchrow(
         """
         INSERT INTO laboratory_investigation (appointment_id, patient_id, ordered_by, test_name, test_type, status, ordered_at)

@@ -13,6 +13,12 @@ from app.db import get_pool
 load_dotenv()
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "changeme")
+if SECRET_KEY == "changeme":
+    import warnings
+    warnings.warn(
+        "SECRET_KEY is not set — using insecure default. Set SECRET_KEY in .env before deploying.",
+        stacklevel=1,
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
 

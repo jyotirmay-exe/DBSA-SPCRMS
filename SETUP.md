@@ -25,7 +25,8 @@ pyenv install 3.12.4
 1. Go to [supabase.com](https://supabase.com) → sign up → **New project**
 2. Wait ~1 min for project to spin up
 3. Left sidebar → **SQL Editor** → **New query** → paste all of `db/schema.sql` → **Run**
-4. **New query** → paste all of `db/seed.sql` → **Run**
+4. **New query** → paste all of `db/views.sql` → **Run**
+5. **New query** → paste all of `db/seed.sql` → **Run**
 5. Left sidebar → **Project Settings** → **Database** → scroll to **Connection string** → click **URI** tab → copy the string (looks like `postgresql://postgres:[PASSWORD]@db.xxxx.supabase.co:5432/postgres`)
 
 ### 3. Backend

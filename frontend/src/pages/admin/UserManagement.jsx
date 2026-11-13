@@ -27,7 +27,13 @@ export default function UserManagement() {
     e.preventDefault()
     setError(''); setSuccess('')
     try {
-      await usersAPI.create(form)
+      const payload = { ...form }
+      if (payload.linked_id === '' || payload.linked_id === undefined) {
+        payload.linked_id = null
+      } else {
+        payload.linked_id = parseInt(payload.linked_id, 10)
+      }
+      await usersAPI.create(payload)
       setSuccess('User created.')
       setForm({ email: '', password: '', role: 'patient', linked_id: '' })
       setShowForm(false)

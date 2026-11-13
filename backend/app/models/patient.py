@@ -1,12 +1,12 @@
 from pydantic import BaseModel, EmailStr
 from datetime import date, datetime
-from typing import Optional
+from typing import Literal, Optional
 
 
 class PatientCreate(BaseModel):
     full_name: str
     date_of_birth: date
-    gender: str
+    gender: Literal["Male", "Female", "Other"]
     contact_number: str
     email: EmailStr
     address: str

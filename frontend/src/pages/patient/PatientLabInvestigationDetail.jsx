@@ -17,10 +17,10 @@ export default function PatientLabInvestigationDetail() {
 
   useEffect(() => {
     Promise.all([
-      labInvestigationsAPI.list(),
+      labInvestigationsAPI.get(invId),
       labResultsAPI.getByInvestigation(invId).catch(() => null),
     ]).then(([inv, res]) => {
-      setInvestigation(inv.data.find(x => x.investigation_id === invId) || null)
+      setInvestigation(inv.data)
       setResult(res ? (res.data[0] || null) : null)
     }).catch(() => {}).finally(() => setLoading(false))
   }, [invId])

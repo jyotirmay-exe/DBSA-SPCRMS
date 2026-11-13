@@ -3,8 +3,11 @@ import { notificationsAPI } from '../services/api'
 import Breadcrumb from '../components/Breadcrumb'
 
 const TYPE_LABEL = {
-  appointment: 'Appointment',
-  lab_result: 'Lab Result',
+  appointment_scheduled: 'Appointment',
+  appointment_assigned: 'Appointment',
+  appointment_cancelled: 'Appointment',
+  lab_result_available: 'Lab Result',
+  lab_result_entered: 'Lab Result',
   general: 'General',
 }
 
@@ -56,8 +59,8 @@ export default function NotificationPanel() {
             >
               <div className="shrink-0 mt-0.5">
                 <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                  n.notification_type === 'appointment' ? 'bg-blue-50 text-blue-700' :
-                  n.notification_type === 'lab_result' ? 'bg-emerald-50 text-emerald-700' :
+                  n.notification_type.startsWith('appointment') ? 'bg-blue-50 text-blue-700' :
+                  n.notification_type.startsWith('lab_result') ? 'bg-emerald-50 text-emerald-700' :
                   'bg-slate-100 text-slate-600'
                 }`}>
                   {TYPE_LABEL[n.notification_type] || 'Notice'}

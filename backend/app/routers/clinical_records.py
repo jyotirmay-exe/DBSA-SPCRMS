@@ -54,9 +54,19 @@ async def get_record(record_id: int, current_user: CurrentUser = Depends(get_cur
     return dict(row)
 
 
-@router.post("", response_model=ClinicalRecordOut, dependencies=[Depends(require_role("admin", "doctor"))])
-async def create_record(body: ClinicalRecordCreate):
+@router.post("", response_model=ClinicalRecordOut)
+async def create_record(
+    body: ClinicalRecordCreate,
+    current_user: CurrentUser = Depends(require_role("admin", "doctor")),
+):
     pool = await get_pool()
+    if current_user.role == "doctor":
+        has_appt = await pool.fetchval(
+            "SELECT 1 FROM appointment WHERE patient_id = $1 AND professional_id = $2",
+            body.patient_id, current_user.linked_id,
+        )
+        if not has_appt:
+            raise HTTPException(status_code=403, detail="No appointment on record with this patient")
     row = await pool.fetchrow(
         "INSERT INTO clinical_record (patient_id, created_at, summary_notes) VALUES ($1,now(),$2) RETURNING *",
         body.patient_id, body.summary_notes,
@@ -64,9 +74,23 @@ async def create_record(body: ClinicalRecordCreate):
     return dict(row)
 
 
-@router.put("/{record_id}", response_model=ClinicalRecordOut, dependencies=[Depends(require_role("admin", "doctor"))])
-async def update_record(record_id: int, body: ClinicalRecordUpdate):
+@router.put("/{record_id}", response_model=ClinicalRecordOut)
+async def update_record(
+    record_id: int,
+    body: ClinicalRecordUpdate,
+    current_user: CurrentUser = Depends(require_role("admin", "doctor")),
+):
     pool = await get_pool()
+    if current_user.role == "doctor":
+        existing = await pool.fetchrow("SELECT patient_id FROM clinical_record WHERE record_id = $1", record_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Record not found")
+        has_appt = await pool.fetchval(
+            "SELECT 1 FROM appointment WHERE patient_id = $1 AND professional_id = $2",
+            existing["patient_id"], current_user.linked_id,
+        )
+        if not has_appt:
+            raise HTTPException(status_code=403, detail="Access denied")
     row = await pool.fetchrow(
         "UPDATE clinical_record SET summary_notes = $2 WHERE record_id = $1 RETURNING *",
         record_id, body.summary_notes,

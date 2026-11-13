@@ -18,10 +18,10 @@ export default function PatientDiagnosisDetail() {
 
   useEffect(() => {
     Promise.all([
-      diagnosesAPI.list(),
+      diagnosesAPI.get(diagId),
       prescriptionsAPI.list(),
     ]).then(([d, rx]) => {
-      setDiagnosis(d.data.find(x => x.diagnosis_id === diagId) || null)
+      setDiagnosis(d.data)
       setPrescriptions(rx.data.filter(x => x.diagnosis_id === diagId))
     }).catch(() => {}).finally(() => setLoading(false))
   }, [diagId])

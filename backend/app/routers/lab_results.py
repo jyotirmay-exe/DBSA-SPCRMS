@@ -69,6 +69,8 @@ async def create_result(
     current_user: CurrentUser = Depends(require_role("admin", "lab_technician")),
 ):
     pool = await get_pool()
+    if current_user.linked_id is None:
+        raise HTTPException(status_code=400, detail="Your account is not linked to a professional record. Contact admin.")
     async with pool.acquire() as conn:
         async with conn.transaction():
             row = await conn.fetchrow(
@@ -99,9 +101,19 @@ async def create_result(
     return dict(row)
 
 
-@router.put("/{result_id}", response_model=LabResultOut, dependencies=[Depends(require_role("admin", "lab_technician"))])
-async def update_result(result_id: int, body: LabResultUpdate):
+@router.put("/{result_id}", response_model=LabResultOut)
+async def update_result(
+    result_id: int,
+    body: LabResultUpdate,
+    current_user: CurrentUser = Depends(require_role("admin", "lab_technician")),
+):
     pool = await get_pool()
+    if current_user.role == "lab_technician":
+        existing = await pool.fetchrow("SELECT entered_by FROM lab_result WHERE result_id = $1", result_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Result not found")
+        if existing["entered_by"] != current_user.linked_id:
+            raise HTTPException(status_code=403, detail="You can only update results you entered")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")

@@ -28,7 +28,12 @@ export default function LabOrderForm() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      await labInvestigationsAPI.create(form)
+      const { notes, ...rest } = form
+      await labInvestigationsAPI.create({
+        ...rest,
+        appointment_id: parseInt(form.appointment_id, 10),
+        patient_id: parseInt(form.patient_id, 10),
+      })
       navigate(patientId ? `/doctor/patients/${patientId}` : '/doctor/dashboard')
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create lab order.')

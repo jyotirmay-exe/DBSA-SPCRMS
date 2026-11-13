@@ -23,7 +23,11 @@ export default function AppointmentForm() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      await appointmentsAPI.create(form)
+      await appointmentsAPI.create({
+        ...form,
+        patient_id: parseInt(form.patient_id, 10),
+        professional_id: parseInt(form.professional_id, 10),
+      })
       navigate('/doctor/appointments')
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to schedule appointment.')

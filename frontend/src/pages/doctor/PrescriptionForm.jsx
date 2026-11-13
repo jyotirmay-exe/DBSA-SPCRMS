@@ -26,7 +26,11 @@ export default function PrescriptionForm() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      await prescriptionsAPI.create(form)
+      await prescriptionsAPI.create({
+        ...form,
+        diagnosis_id: parseInt(form.diagnosis_id, 10),
+        patient_id: parseInt(form.patient_id, 10),
+      })
       navigate(patientId ? `/doctor/patients/${patientId}` : '/doctor/dashboard')
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to save prescription.')

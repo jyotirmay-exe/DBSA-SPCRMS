@@ -51,15 +51,17 @@ async def create_appointment(
     current_user: CurrentUser = Depends(require_role("admin", "doctor")),
 ):
     pool = await get_pool()
-    conflict = await pool.fetchrow(
-        "SELECT 1 FROM appointment WHERE professional_id = $1 AND scheduled_at = $2 AND status != 'Cancelled'",
-        body.professional_id, body.scheduled_at,
-    )
-    if conflict:
-        raise HTTPException(status_code=409, detail="Doctor already has an appointment at this time")
+    if current_user.role == "doctor" and body.professional_id != current_user.linked_id:
+        raise HTTPException(status_code=403, detail="You can only schedule appointments for yourself")
 
     async with pool.acquire() as conn:
         async with conn.transaction():
+            conflict = await conn.fetchrow(
+                "SELECT 1 FROM appointment WHERE professional_id = $1 AND scheduled_at = $2 AND status != 'Cancelled'",
+                body.professional_id, body.scheduled_at,
+            )
+            if conflict:
+                raise HTTPException(status_code=409, detail="Doctor already has an appointment at this time")
             ins = await conn.fetchrow(
                 """
                 INSERT INTO appointment (patient_id, professional_id, scheduled_at, status, notes)

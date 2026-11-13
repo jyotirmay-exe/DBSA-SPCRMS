@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 
 
 class DiagnosisCreate(BaseModel):
@@ -8,13 +8,13 @@ class DiagnosisCreate(BaseModel):
     patient_id: int
     condition_name: str
     description: Optional[str] = None
-    severity: str
+    severity: Literal["Mild", "Moderate", "Severe"]
 
 
 class DiagnosisUpdate(BaseModel):
     condition_name: Optional[str] = None
     description: Optional[str] = None
-    severity: Optional[str] = None
+    severity: Optional[Literal["Mild", "Moderate", "Severe"]] = None
 
 
 class DiagnosisOut(BaseModel):
