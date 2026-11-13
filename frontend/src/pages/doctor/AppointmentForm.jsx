@@ -12,7 +12,7 @@ export default function AppointmentForm() {
 
   useEffect(() => {
     patientsAPI.list().then(r => setPatients(r.data.filter(p => p.is_active))).catch(() => {})
-    professionalsAPI.list().then(r => setProfessionals(r.data.filter(p => p.is_active && p.role === 'doctor'))).catch(() => {})
+    professionalsAPI.list().then(r => setProfessionals(r.data.filter(p => p.is_active && p.role === 'Doctor'))).catch(() => {})
   }, [])
 
   function set(field) {
