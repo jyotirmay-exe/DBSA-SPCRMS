@@ -32,6 +32,9 @@ class PrescriptionOut(BaseModel):
     condition_name: Optional[str] = None
     appointment_date: Optional[str] = None
     patient_name: Optional[str] = None
+    # enriched from v_prescription_full
+    doctor_id: Optional[int] = None
+    doctor_name: Optional[str] = None
 
     class Config:
         from_attributes = True

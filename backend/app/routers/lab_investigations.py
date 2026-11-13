@@ -7,16 +7,6 @@ from app.models.lab_investigation import LabInvestigationCreate, LabInvestigatio
 
 router = APIRouter(prefix="/lab-investigations", tags=["lab-investigations"])
 
-_JOIN = """
-    SELECT li.*,
-           p.full_name AS patient_name,
-           hp.full_name AS ordered_by_name
-    FROM laboratory_investigation li
-    JOIN patient p ON p.patient_id = li.patient_id
-    JOIN healthcare_professional hp ON hp.professional_id = li.ordered_by
-"""
-
-
 @router.get("", response_model=list[LabInvestigationOut])
 async def list_investigations(
     skip: int = 0,
@@ -28,44 +18,44 @@ async def list_investigations(
     pool = await get_pool()
     if current_user.role == "patient":
         rows = await pool.fetch(
-            _JOIN + "WHERE li.patient_id = $1 ORDER BY li.ordered_at OFFSET $2 LIMIT $3",
+            "SELECT * FROM v_lab_investigation_full WHERE patient_id = $1 ORDER BY ordered_at OFFSET $2 LIMIT $3",
             current_user.linked_id, skip, limit,
         )
     elif current_user.role == "lab_technician":
         if status:
             rows = await pool.fetch(
-                _JOIN + "WHERE li.status = $1 ORDER BY li.ordered_at OFFSET $2 LIMIT $3",
+                "SELECT * FROM v_lab_investigation_full WHERE status = $1 ORDER BY ordered_at OFFSET $2 LIMIT $3",
                 status, skip, limit,
             )
         else:
             rows = await pool.fetch(
-                _JOIN + "ORDER BY li.ordered_at OFFSET $1 LIMIT $2", skip, limit,
+                "SELECT * FROM v_lab_investigation_full ORDER BY ordered_at OFFSET $1 LIMIT $2", skip, limit,
             )
     elif current_user.role == "doctor":
         if patient_id:
             rows = await pool.fetch(
-                _JOIN + "WHERE li.ordered_by = $1 AND li.patient_id = $2 ORDER BY li.ordered_at OFFSET $3 LIMIT $4",
+                "SELECT * FROM v_lab_investigation_full WHERE ordered_by = $1 AND patient_id = $2 ORDER BY ordered_at OFFSET $3 LIMIT $4",
                 current_user.linked_id, patient_id, skip, limit,
             )
         else:
             rows = await pool.fetch(
-                _JOIN + "WHERE li.ordered_by = $1 ORDER BY li.ordered_at OFFSET $2 LIMIT $3",
+                "SELECT * FROM v_lab_investigation_full WHERE ordered_by = $1 ORDER BY ordered_at OFFSET $2 LIMIT $3",
                 current_user.linked_id, skip, limit,
             )
     else:
         if patient_id:
             rows = await pool.fetch(
-                _JOIN + "WHERE li.patient_id = $1 ORDER BY li.ordered_at OFFSET $2 LIMIT $3",
+                "SELECT * FROM v_lab_investigation_full WHERE patient_id = $1 ORDER BY ordered_at OFFSET $2 LIMIT $3",
                 patient_id, skip, limit,
             )
         elif status:
             rows = await pool.fetch(
-                _JOIN + "WHERE li.status = $1 ORDER BY li.ordered_at OFFSET $2 LIMIT $3",
+                "SELECT * FROM v_lab_investigation_full WHERE status = $1 ORDER BY ordered_at OFFSET $2 LIMIT $3",
                 status, skip, limit,
             )
         else:
             rows = await pool.fetch(
-                _JOIN + "ORDER BY li.ordered_at OFFSET $1 LIMIT $2", skip, limit
+                "SELECT * FROM v_lab_investigation_full ORDER BY ordered_at OFFSET $1 LIMIT $2", skip, limit
             )
     return [dict(r) for r in rows]
 
@@ -73,7 +63,7 @@ async def list_investigations(
 @router.get("/{investigation_id}", response_model=LabInvestigationOut)
 async def get_investigation(investigation_id: int, current_user: CurrentUser = Depends(get_current_user)):
     pool = await get_pool()
-    row = await pool.fetchrow(_JOIN + "WHERE li.investigation_id = $1", investigation_id)
+    row = await pool.fetchrow("SELECT * FROM v_lab_investigation_full WHERE investigation_id = $1", investigation_id)
     if not row:
         raise HTTPException(status_code=404, detail="Investigation not found")
     if current_user.role == "patient" and row["patient_id"] != current_user.linked_id:
@@ -95,7 +85,7 @@ async def order_investigation(
         body.appointment_id, body.patient_id, current_user.linked_id,
         body.test_name, body.test_type,
     )
-    row = await pool.fetchrow(_JOIN + "WHERE li.investigation_id = $1", ins["investigation_id"])
+    row = await pool.fetchrow("SELECT * FROM v_lab_investigation_full WHERE investigation_id = $1", ins["investigation_id"])
     return dict(row)
 
 
@@ -110,7 +100,7 @@ async def update_investigation(investigation_id: int, body: LabInvestigationUpda
         f"UPDATE laboratory_investigation SET {set_clause} WHERE investigation_id = $1",
         investigation_id, *updates.values(),
     )
-    row = await pool.fetchrow(_JOIN + "WHERE li.investigation_id = $1", investigation_id)
+    row = await pool.fetchrow("SELECT * FROM v_lab_investigation_full WHERE investigation_id = $1", investigation_id)
     if not row:
         raise HTTPException(status_code=404, detail="Investigation not found")
     return dict(row)

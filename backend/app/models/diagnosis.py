@@ -26,6 +26,10 @@ class DiagnosisOut(BaseModel):
     severity: str
     recorded_at: datetime
     patient_name: Optional[str] = None
+    # enriched from v_diagnosis_full
+    appointment_scheduled_at: Optional[datetime] = None
+    doctor_id: Optional[int] = None
+    doctor_name: Optional[str] = None
 
     class Config:
         from_attributes = True

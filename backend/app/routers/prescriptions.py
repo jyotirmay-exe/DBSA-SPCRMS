@@ -7,18 +7,6 @@ from app.models.prescription import PrescriptionCreate, PrescriptionUpdate, Pres
 
 router = APIRouter(prefix="/prescriptions", tags=["prescriptions"])
 
-_JOIN = """
-    SELECT p.*,
-           d.condition_name,
-           a.scheduled_at::date::text AS appointment_date,
-           pat.full_name AS patient_name
-    FROM prescription p
-    JOIN diagnosis d ON d.diagnosis_id = p.diagnosis_id
-    JOIN appointment a ON a.appointment_id = d.appointment_id
-    JOIN patient pat ON pat.patient_id = p.patient_id
-"""
-
-
 @router.get("", response_model=list[PrescriptionOut])
 async def list_prescriptions(
     skip: int = 0,
@@ -29,29 +17,29 @@ async def list_prescriptions(
     pool = await get_pool()
     if current_user.role == "patient":
         rows = await pool.fetch(
-            _JOIN + "WHERE p.patient_id = $1 ORDER BY p.prescription_id OFFSET $2 LIMIT $3",
+            "SELECT * FROM v_prescription_full WHERE patient_id = $1 ORDER BY prescription_id OFFSET $2 LIMIT $3",
             current_user.linked_id, skip, limit,
         )
     elif current_user.role == "doctor":
         if patient_id:
             rows = await pool.fetch(
-                _JOIN + "WHERE a.professional_id = $1 AND p.patient_id = $2 ORDER BY p.prescription_id OFFSET $3 LIMIT $4",
+                "SELECT * FROM v_prescription_full WHERE doctor_id = $1 AND patient_id = $2 ORDER BY prescription_id OFFSET $3 LIMIT $4",
                 current_user.linked_id, patient_id, skip, limit,
             )
         else:
             rows = await pool.fetch(
-                _JOIN + "WHERE a.professional_id = $1 ORDER BY p.prescription_id OFFSET $2 LIMIT $3",
+                "SELECT * FROM v_prescription_full WHERE doctor_id = $1 ORDER BY prescription_id OFFSET $2 LIMIT $3",
                 current_user.linked_id, skip, limit,
             )
     else:
         if patient_id:
             rows = await pool.fetch(
-                _JOIN + "WHERE p.patient_id = $1 ORDER BY p.prescription_id OFFSET $2 LIMIT $3",
+                "SELECT * FROM v_prescription_full WHERE patient_id = $1 ORDER BY prescription_id OFFSET $2 LIMIT $3",
                 patient_id, skip, limit,
             )
         else:
             rows = await pool.fetch(
-                _JOIN + "ORDER BY p.prescription_id OFFSET $1 LIMIT $2", skip, limit
+                "SELECT * FROM v_prescription_full ORDER BY prescription_id OFFSET $1 LIMIT $2", skip, limit
             )
     return [dict(r) for r in rows]
 
@@ -60,7 +48,7 @@ async def list_prescriptions(
 async def get_prescription(prescription_id: int, current_user: CurrentUser = Depends(get_current_user)):
     pool = await get_pool()
     row = await pool.fetchrow(
-        _JOIN + "WHERE p.prescription_id = $1", prescription_id
+        "SELECT * FROM v_prescription_full WHERE prescription_id = $1", prescription_id
     )
     if not row:
         raise HTTPException(status_code=404, detail="Prescription not found")
@@ -80,7 +68,7 @@ async def create_prescription(body: PrescriptionCreate):
         body.diagnosis_id, body.patient_id, body.medication_name,
         body.dosage, body.frequency, body.duration, body.notes,
     )
-    row = await pool.fetchrow(_JOIN + "WHERE p.prescription_id = $1", ins["prescription_id"])
+    row = await pool.fetchrow("SELECT * FROM v_prescription_full WHERE prescription_id = $1", ins["prescription_id"])
     return dict(row)
 
 
@@ -95,7 +83,7 @@ async def update_prescription(prescription_id: int, body: PrescriptionUpdate):
         f"UPDATE prescription SET {set_clause} WHERE prescription_id = $1",
         prescription_id, *updates.values(),
     )
-    row = await pool.fetchrow(_JOIN + "WHERE p.prescription_id = $1", prescription_id)
+    row = await pool.fetchrow("SELECT * FROM v_prescription_full WHERE prescription_id = $1", prescription_id)
     if not row:
         raise HTTPException(status_code=404, detail="Prescription not found")
     return dict(row)

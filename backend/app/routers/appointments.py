@@ -8,16 +8,6 @@ from app.notifications import create_notification, get_user_id_for_patient, get_
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
-_JOIN = """
-    SELECT a.*,
-           p.full_name AS patient_name,
-           hp.full_name AS professional_name
-    FROM appointment a
-    JOIN patient p ON p.patient_id = a.patient_id
-    JOIN healthcare_professional hp ON hp.professional_id = a.professional_id
-"""
-
-
 @router.get("", response_model=list[AppointmentOut])
 async def list_appointments(
     skip: int = 0,
@@ -27,17 +17,17 @@ async def list_appointments(
     pool = await get_pool()
     if current_user.role == "patient":
         rows = await pool.fetch(
-            _JOIN + "WHERE a.patient_id = $1 ORDER BY a.scheduled_at OFFSET $2 LIMIT $3",
+            "SELECT * FROM v_appointment_full WHERE patient_id = $1 ORDER BY scheduled_at OFFSET $2 LIMIT $3",
             current_user.linked_id, skip, limit,
         )
     elif current_user.role == "doctor":
         rows = await pool.fetch(
-            _JOIN + "WHERE a.professional_id = $1 ORDER BY a.scheduled_at OFFSET $2 LIMIT $3",
+            "SELECT * FROM v_appointment_full WHERE professional_id = $1 ORDER BY scheduled_at OFFSET $2 LIMIT $3",
             current_user.linked_id, skip, limit,
         )
     else:
         rows = await pool.fetch(
-            _JOIN + "ORDER BY a.scheduled_at OFFSET $1 LIMIT $2", skip, limit
+            "SELECT * FROM v_appointment_full ORDER BY scheduled_at OFFSET $1 LIMIT $2", skip, limit
         )
     return [dict(r) for r in rows]
 
@@ -45,7 +35,7 @@ async def list_appointments(
 @router.get("/{appointment_id}", response_model=AppointmentOut)
 async def get_appointment(appointment_id: int, current_user: CurrentUser = Depends(get_current_user)):
     pool = await get_pool()
-    row = await pool.fetchrow(_JOIN + "WHERE a.appointment_id = $1", appointment_id)
+    row = await pool.fetchrow("SELECT * FROM v_appointment_full WHERE appointment_id = $1", appointment_id)
     if not row:
         raise HTTPException(status_code=404, detail="Appointment not found")
     if current_user.role == "patient" and row["patient_id"] != current_user.linked_id:
@@ -83,7 +73,7 @@ async def create_appointment(
                 await create_notification(conn, patient_uid, "Your appointment has been scheduled.", "appointment_scheduled")
             if doctor_uid:
                 await create_notification(conn, doctor_uid, "A new appointment has been assigned to you.", "appointment_assigned")
-    row = await pool.fetchrow(_JOIN + "WHERE a.appointment_id = $1", ins["appointment_id"])
+    row = await pool.fetchrow("SELECT * FROM v_appointment_full WHERE appointment_id = $1", ins["appointment_id"])
     return dict(row)
 
 
@@ -117,7 +107,7 @@ async def update_appointment(
                 patient_uid = await get_user_id_for_patient(conn, existing["patient_id"])
                 if patient_uid:
                     await create_notification(conn, patient_uid, "Your appointment has been cancelled.", "appointment_cancelled")
-    row = await pool.fetchrow(_JOIN + "WHERE a.appointment_id = $1", appointment_id)
+    row = await pool.fetchrow("SELECT * FROM v_appointment_full WHERE appointment_id = $1", appointment_id)
     return dict(row)
 
 

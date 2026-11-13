@@ -19,32 +19,22 @@ async def list_results(
     pool = await get_pool()
     if investigation_id:
         rows = await pool.fetch(
-            "SELECT * FROM lab_result WHERE investigation_id = $1 ORDER BY entered_at",
-            investigation_id,
+            "SELECT * FROM v_lab_result_full WHERE investigation_id = $1 ORDER BY entered_at OFFSET $2 LIMIT $3",
+            investigation_id, skip, limit,
         )
     elif current_user.role == "patient":
         rows = await pool.fetch(
-            """
-            SELECT lr.* FROM lab_result lr
-            JOIN laboratory_investigation li ON li.investigation_id = lr.investigation_id
-            WHERE li.patient_id = $1
-            ORDER BY lr.entered_at OFFSET $2 LIMIT $3
-            """,
+            "SELECT * FROM v_lab_result_full WHERE patient_id = $1 ORDER BY entered_at OFFSET $2 LIMIT $3",
             current_user.linked_id, skip, limit,
         )
     elif current_user.role == "doctor":
         rows = await pool.fetch(
-            """
-            SELECT lr.* FROM lab_result lr
-            JOIN laboratory_investigation li ON li.investigation_id = lr.investigation_id
-            WHERE li.ordered_by = $1
-            ORDER BY lr.entered_at OFFSET $2 LIMIT $3
-            """,
+            "SELECT * FROM v_lab_result_full WHERE ordered_by = $1 ORDER BY entered_at OFFSET $2 LIMIT $3",
             current_user.linked_id, skip, limit,
         )
     else:
         rows = await pool.fetch(
-            "SELECT * FROM lab_result ORDER BY entered_at OFFSET $1 LIMIT $2", skip, limit
+            "SELECT * FROM v_lab_result_full ORDER BY entered_at OFFSET $1 LIMIT $2", skip, limit
         )
     return [dict(r) for r in rows]
 
@@ -52,13 +42,11 @@ async def list_results(
 @router.get("/{result_id}", response_model=LabResultOut)
 async def get_result(result_id: int, current_user: CurrentUser = Depends(get_current_user)):
     pool = await get_pool()
-    row = await pool.fetchrow("SELECT * FROM lab_result WHERE result_id = $1", result_id)
+    row = await pool.fetchrow("SELECT * FROM v_lab_result_full WHERE result_id = $1", result_id)
     if not row:
         raise HTTPException(status_code=404, detail="Result not found")
-    if current_user.role == "patient":
-        inv = await pool.fetchrow("SELECT patient_id FROM laboratory_investigation WHERE investigation_id = $1", row["investigation_id"])
-        if not inv or inv["patient_id"] != current_user.linked_id:
-            raise HTTPException(status_code=403, detail="Access denied")
+    if current_user.role == "patient" and row["patient_id"] != current_user.linked_id:
+        raise HTTPException(status_code=403, detail="Access denied")
     return dict(row)
 
 
@@ -93,6 +81,8 @@ async def create_result(
                     await create_notification(conn, patient_uid, "Your lab results are now available.", "lab_result_available")
                 if doctor_uid:
                     await create_notification(conn, doctor_uid, "Lab results have been entered for your patient.", "lab_result_entered")
+    result_id = row["result_id"]
+    row = await pool.fetchrow("SELECT * FROM v_lab_result_full WHERE result_id = $1", result_id)
     return dict(row)
 
 
@@ -103,10 +93,11 @@ async def update_result(result_id: int, body: LabResultUpdate):
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
     set_clause = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(updates))
-    row = await pool.fetchrow(
-        f"UPDATE lab_result SET {set_clause} WHERE result_id = $1 RETURNING *",
+    exists = await pool.fetchrow(
+        f"UPDATE lab_result SET {set_clause} WHERE result_id = $1 RETURNING result_id",
         result_id, *updates.values(),
     )
-    if not row:
+    if not exists:
         raise HTTPException(status_code=404, detail="Result not found")
+    row = await pool.fetchrow("SELECT * FROM v_lab_result_full WHERE result_id = $1", result_id)
     return dict(row)
