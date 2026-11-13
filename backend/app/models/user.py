@@ -5,7 +5,7 @@ from typing import Optional, Literal
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    role: Literal["Patient", "Doctor", "Lab Technician", "Admin"]
+    role: Literal["patient", "doctor", "lab_technician", "admin"]
     linked_id: Optional[int] = None
 
 
