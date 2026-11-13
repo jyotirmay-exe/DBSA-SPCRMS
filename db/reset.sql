@@ -80,8 +80,7 @@ CREATE TABLE appointment (
     professional_id INT NOT NULL REFERENCES healthcare_professional(professional_id) ON DELETE RESTRICT,
     scheduled_at    TIMESTAMPTZ NOT NULL,
     status          VARCHAR(20) CHECK (status IN ('Scheduled', 'Completed', 'Cancelled')) NOT NULL DEFAULT 'Scheduled',
-    notes           TEXT,
-    UNIQUE (professional_id, scheduled_at)
+    notes           TEXT
 );
 
 CREATE TABLE diagnosis (
@@ -177,6 +176,7 @@ CREATE INDEX idx_appointment_patient               ON appointment(patient_id);
 CREATE INDEX idx_appointment_professional          ON appointment(professional_id);
 CREATE INDEX idx_appointment_scheduled_at          ON appointment(scheduled_at);
 CREATE INDEX idx_appointment_status                ON appointment(status);
+CREATE UNIQUE INDEX uq_appointment_slot ON appointment (professional_id, scheduled_at) WHERE status != 'Cancelled';
 CREATE INDEX idx_diagnosis_appointment             ON diagnosis(appointment_id);
 CREATE INDEX idx_diagnosis_patient                 ON diagnosis(patient_id);
 CREATE INDEX idx_prescription_diagnosis            ON prescription(diagnosis_id);
