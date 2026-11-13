@@ -6,6 +6,11 @@ from app.models.professional import ProfessionalCreate, ProfessionalUpdate, Prof
 
 router = APIRouter(prefix="/professionals", tags=["professionals"])
 
+_PROF_ROLE_MAP = {
+    "doctor": "Doctor",
+    "lab_technician": "Lab Technician",
+}
+
 
 @router.get("", response_model=list[ProfessionalOut], dependencies=[Depends(require_role("admin", "doctor"))])
 async def list_professionals(skip: int = 0, limit: int = 50):
@@ -33,7 +38,7 @@ async def create_professional(body: ProfessionalCreate):
         INSERT INTO healthcare_professional (full_name, role, specialization, contact_number, email, is_active)
         VALUES ($1,$2,$3,$4,$5,true) RETURNING *
         """,
-        body.full_name, body.role, body.specialization, body.contact_number, body.email,
+        body.full_name, _PROF_ROLE_MAP.get(body.role, body.role), body.specialization, body.contact_number, body.email,
     )
     return dict(row)
 

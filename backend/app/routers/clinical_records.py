@@ -44,6 +44,13 @@ async def get_record(record_id: int, current_user: CurrentUser = Depends(get_cur
         raise HTTPException(status_code=404, detail="Record not found")
     if current_user.role == "patient" and row["patient_id"] != current_user.linked_id:
         raise HTTPException(status_code=403, detail="Access denied")
+    if current_user.role == "doctor":
+        has_appt = await pool.fetchval(
+            "SELECT 1 FROM appointment WHERE patient_id = $1 AND professional_id = $2",
+            row["patient_id"], current_user.linked_id,
+        )
+        if not has_appt:
+            raise HTTPException(status_code=403, detail="Access denied")
     return dict(row)
 
 

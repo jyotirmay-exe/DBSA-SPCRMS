@@ -52,6 +52,8 @@ async def get_diagnosis(diagnosis_id: int, current_user: CurrentUser = Depends(g
         raise HTTPException(status_code=404, detail="Diagnosis not found")
     if current_user.role == "patient" and row["patient_id"] != current_user.linked_id:
         raise HTTPException(status_code=403, detail="Access denied")
+    if current_user.role == "doctor" and row["doctor_id"] != current_user.linked_id:
+        raise HTTPException(status_code=403, detail="Access denied")
     return dict(row)
 
 
@@ -69,9 +71,19 @@ async def create_diagnosis(body: DiagnosisCreate):
     return dict(row)
 
 
-@router.put("/{diagnosis_id}", response_model=DiagnosisOut, dependencies=[Depends(require_role("admin", "doctor"))])
-async def update_diagnosis(diagnosis_id: int, body: DiagnosisUpdate):
+@router.put("/{diagnosis_id}", response_model=DiagnosisOut)
+async def update_diagnosis(
+    diagnosis_id: int,
+    body: DiagnosisUpdate,
+    current_user: CurrentUser = Depends(require_role("admin", "doctor")),
+):
     pool = await get_pool()
+    if current_user.role == "doctor":
+        existing = await pool.fetchrow("SELECT doctor_id FROM v_diagnosis_full WHERE diagnosis_id = $1", diagnosis_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Diagnosis not found")
+        if existing["doctor_id"] != current_user.linked_id:
+            raise HTTPException(status_code=403, detail="Access denied")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")

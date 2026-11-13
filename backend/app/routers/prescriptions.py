@@ -54,6 +54,8 @@ async def get_prescription(prescription_id: int, current_user: CurrentUser = Dep
         raise HTTPException(status_code=404, detail="Prescription not found")
     if current_user.role == "patient" and row["patient_id"] != current_user.linked_id:
         raise HTTPException(status_code=403, detail="Access denied")
+    if current_user.role == "doctor" and row["doctor_id"] != current_user.linked_id:
+        raise HTTPException(status_code=403, detail="Access denied")
     return dict(row)
 
 
@@ -72,9 +74,19 @@ async def create_prescription(body: PrescriptionCreate):
     return dict(row)
 
 
-@router.put("/{prescription_id}", response_model=PrescriptionOut, dependencies=[Depends(require_role("admin", "doctor"))])
-async def update_prescription(prescription_id: int, body: PrescriptionUpdate):
+@router.put("/{prescription_id}", response_model=PrescriptionOut)
+async def update_prescription(
+    prescription_id: int,
+    body: PrescriptionUpdate,
+    current_user: CurrentUser = Depends(require_role("admin", "doctor")),
+):
     pool = await get_pool()
+    if current_user.role == "doctor":
+        existing = await pool.fetchrow("SELECT doctor_id FROM v_prescription_full WHERE prescription_id = $1", prescription_id)
+        if not existing:
+            raise HTTPException(status_code=404, detail="Prescription not found")
+        if existing["doctor_id"] != current_user.linked_id:
+            raise HTTPException(status_code=403, detail="Access denied")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")

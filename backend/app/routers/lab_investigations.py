@@ -68,6 +68,8 @@ async def get_investigation(investigation_id: int, current_user: CurrentUser = D
         raise HTTPException(status_code=404, detail="Investigation not found")
     if current_user.role == "patient" and row["patient_id"] != current_user.linked_id:
         raise HTTPException(status_code=403, detail="Access denied")
+    if current_user.role == "doctor" and row["ordered_by"] != current_user.linked_id:
+        raise HTTPException(status_code=403, detail="Access denied")
     return dict(row)
 
 

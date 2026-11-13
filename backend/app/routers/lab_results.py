@@ -18,10 +18,21 @@ async def list_results(
 ):
     pool = await get_pool()
     if investigation_id:
-        rows = await pool.fetch(
-            "SELECT * FROM v_lab_result_full WHERE investigation_id = $1 ORDER BY entered_at OFFSET $2 LIMIT $3",
-            investigation_id, skip, limit,
-        )
+        if current_user.role == "patient":
+            rows = await pool.fetch(
+                "SELECT * FROM v_lab_result_full WHERE investigation_id = $1 AND patient_id = $2 ORDER BY entered_at OFFSET $3 LIMIT $4",
+                investigation_id, current_user.linked_id, skip, limit,
+            )
+        elif current_user.role == "doctor":
+            rows = await pool.fetch(
+                "SELECT * FROM v_lab_result_full WHERE investigation_id = $1 AND ordered_by = $2 ORDER BY entered_at OFFSET $3 LIMIT $4",
+                investigation_id, current_user.linked_id, skip, limit,
+            )
+        else:
+            rows = await pool.fetch(
+                "SELECT * FROM v_lab_result_full WHERE investigation_id = $1 ORDER BY entered_at OFFSET $2 LIMIT $3",
+                investigation_id, skip, limit,
+            )
     elif current_user.role == "patient":
         rows = await pool.fetch(
             "SELECT * FROM v_lab_result_full WHERE patient_id = $1 ORDER BY entered_at OFFSET $2 LIMIT $3",
@@ -46,6 +57,8 @@ async def get_result(result_id: int, current_user: CurrentUser = Depends(get_cur
     if not row:
         raise HTTPException(status_code=404, detail="Result not found")
     if current_user.role == "patient" and row["patient_id"] != current_user.linked_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    if current_user.role == "doctor" and row["ordered_by"] != current_user.linked_id:
         raise HTTPException(status_code=403, detail="Access denied")
     return dict(row)
 
