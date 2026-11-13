@@ -95,4 +95,26 @@ export const notificationsAPI = {
   markAllRead: () => api.put('/notifications/read-all'),
 }
 
+// ── Medical Images ────────────────────────────────────────────────────────────
+export const medicalImagesAPI = {
+  upload: (formData) => api.post('/medical-images/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  listByPatient: (patientId) => api.get('/medical-images', { params: { patient_id: patientId } }),
+  get: (id) => api.get(`/medical-images/${id}`),
+  fetchBlob: (id) => api.get(`/medical-images/${id}/data`, { responseType: 'blob' }),
+  delete: (id) => api.delete(`/medical-images/${id}`),
+}
+
+// ── ECG Records ───────────────────────────────────────────────────────────────
+export const ecgAPI = {
+  upload: (formData) => api.post('/ecg-records/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  listByPatient: (patientId) => api.get('/ecg-records', { params: { patient_id: patientId } }),
+  get: (id) => api.get(`/ecg-records/${id}`),
+  fetchBlob: (id) => api.get(`/ecg-records/${id}/data`, { responseType: 'blob' }),
+  delete: (id) => api.delete(`/ecg-records/${id}`),
+}
+
 export default api

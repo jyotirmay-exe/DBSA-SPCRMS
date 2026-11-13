@@ -34,6 +34,8 @@ import DoctorDiagnosisDetail from './pages/doctor/DoctorDiagnosisDetail'
 import LabDashboard from './pages/lab/LabDashboard'
 import LabResultForm from './pages/lab/LabResultForm'
 import LabInvestigationDetail from './pages/lab/LabInvestigationDetail'
+import ImageUploadForm from './pages/lab/ImageUploadForm'
+import ECGUploadForm from './pages/lab/ECGUploadForm'
 
 import PatientDashboard from './pages/patient/PatientDashboard'
 import PatientAppointmentDetail from './pages/patient/PatientAppointmentDetail'
@@ -205,6 +207,16 @@ export default function App() {
           <Route path="/lab/investigations/:id" element={
             <ProtectedRoute roles={['lab_technician']}>
               <Layout><LabInvestigationDetail /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/lab/images/upload" element={
+            <ProtectedRoute roles={['lab_technician', 'admin']}>
+              <Layout><ImageUploadForm /></Layout>
+            </ProtectedRoute>
+          } />
+          <Route path="/lab/ecg/upload" element={
+            <ProtectedRoute roles={['lab_technician', 'admin']}>
+              <Layout><ECGUploadForm /></Layout>
             </ProtectedRoute>
           } />
 

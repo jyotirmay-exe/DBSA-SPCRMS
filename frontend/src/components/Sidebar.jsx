@@ -26,6 +26,9 @@ const NAV = {
   lab_technician: [
     { label: 'Dashboard', to: '/lab/dashboard' },
     { divider: true },
+    { label: 'Upload X-Ray', to: '/lab/images/upload' },
+    { label: 'Upload ECG', to: '/lab/ecg/upload' },
+    { divider: true },
     { label: 'Notifications', to: '/notifications', badge: true },
   ],
   patient: [
