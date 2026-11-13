@@ -1,15 +1,15 @@
 """
-seed_media.py — insert synthetic ECG CSVs and optional X-ray JPEGs into the DB.
+seed_media.py — reset + reseed multimodal data.
+
+Deletes ALL rows from medical_image and ecg_audio_record, then inserts
+a fresh ECG for patient 3 (Ravi Iyer, 80 bpm).
 
 Usage:
-  python seed_media.py                      # ECG only (auto-generated)
-  python seed_media.py --xrays db/seed_media/xrays/  # ECG + X-rays from a directory
+  python seed_media.py
 
-Place JPEG files in the --xrays directory, one per patient (patient IDs 1, 2, 3 are used).
-Requires: numpy, asyncpg, python-dotenv (all already in requirements.txt)
+Requires: numpy, asyncpg, python-dotenv
 """
 
-import argparse
 import asyncio
 import csv
 import io
@@ -27,8 +27,12 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     sys.exit("DATABASE_URL not set. Ensure .env is present.")
 
+TARGET_PATIENT_ID = 3
+TARGET_BPM = 80
+TARGET_FNAME = "ecg_ravi_iyer_80bpm.csv"
 
-def generate_ecg_csv(heart_rate: int = 70, duration_sec: int = 10, sample_rate: int = 500) -> bytes:
+
+def generate_ecg_csv(heart_rate: int = 80, duration_sec: int = 10, sample_rate: int = 500) -> bytes:
     t = np.linspace(0, duration_sec, duration_sec * sample_rate)
     period = 60.0 / heart_rate
     mv = np.zeros_like(t)
@@ -49,94 +53,42 @@ def generate_ecg_csv(heart_rate: int = 70, duration_sec: int = 10, sample_rate: 
     return buf.getvalue().encode()
 
 
-async def seed(xrays_dir: str | None):
+async def reset_and_seed():
     conn = await asyncpg.connect(DATABASE_URL)
     try:
-        # verify patients 1–3 exist
-        existing = await conn.fetch("SELECT patient_id FROM patient WHERE patient_id = ANY($1)", [1, 2, 3])
-        existing_ids = {r["patient_id"] for r in existing}
-        if not existing_ids:
-            print("No patients with IDs 1–3 found. Skipping seed.")
-            return
+        # verify target patient exists
+        exists = await conn.fetchval(
+            "SELECT 1 FROM patient WHERE patient_id = $1", TARGET_PATIENT_ID
+        )
+        if not exists:
+            sys.exit(f"Patient {TARGET_PATIENT_ID} not found. Run reset.sql first.")
 
-        # ECG records
-        ecg_params = [
-            (1, 70, "ecg_patient1_70bpm.csv"),
-            (2, 75, "ecg_patient2_75bpm.csv"),
-            (3, 80, "ecg_patient3_80bpm.csv"),
-        ]
-        for patient_id, bpm, fname in ecg_params:
-            if patient_id not in existing_ids:
-                print(f"  skip ECG for patient {patient_id} (not in DB)")
-                continue
-            # skip if already seeded
-            already = await conn.fetchval(
-                "SELECT 1 FROM ecg_audio_record WHERE patient_id = $1 AND metadata->>'file_name' = $2",
-                patient_id, fname,
-            )
-            if already:
-                print(f"  skip ECG {fname} (already seeded)")
-                continue
-            data = generate_ecg_csv(heart_rate=bpm)
-            meta = json.dumps({
-                "file_name": fname,
-                "mime_type": "text/csv",
-                "file_size_bytes": len(data),
-                "sample_rate": 500,
-                "duration_sec": 10,
-                "lead_count": 1,
-                "heart_rate_bpm": bpm,
-            })
-            await conn.execute(
-                "INSERT INTO ecg_audio_record (patient_id, record_data, metadata) VALUES ($1, $2, $3)",
-                patient_id, data, meta,
-            )
-            print(f"  inserted ECG {fname} ({len(data)} bytes)")
+        # wipe all multimodal data
+        deleted_img = await conn.execute("DELETE FROM medical_image")
+        deleted_ecg = await conn.execute("DELETE FROM ecg_audio_record")
+        print(f"  cleared medical_image ({deleted_img})")
+        print(f"  cleared ecg_audio_record ({deleted_ecg})")
 
-        # X-ray images (optional)
-        if xrays_dir:
-            xray_files = sorted(
-                f for f in os.listdir(xrays_dir)
-                if f.lower().endswith((".jpg", ".jpeg", ".png"))
-            )
-            for i, fname in enumerate(xray_files[:3]):
-                patient_id = i + 1
-                if patient_id not in existing_ids:
-                    print(f"  skip X-ray {fname} for patient {patient_id} (not in DB)")
-                    continue
-                already = await conn.fetchval(
-                    "SELECT 1 FROM medical_image WHERE patient_id = $1 AND metadata->>'file_name' = $2",
-                    patient_id, fname,
-                )
-                if already:
-                    print(f"  skip X-ray {fname} (already seeded)")
-                    continue
-                path = os.path.join(xrays_dir, fname)
-                with open(path, "rb") as f:
-                    data = f.read()
-                mime = "image/png" if fname.lower().endswith(".png") else "image/jpeg"
-                meta = json.dumps({
-                    "file_name": fname,
-                    "mime_type": mime,
-                    "file_size_bytes": len(data),
-                    "modality": "X-Ray",
-                    "body_part": "Chest",
-                })
-                await conn.execute(
-                    "INSERT INTO medical_image (patient_id, image_data, metadata) VALUES ($1, $2, $3)",
-                    patient_id, data, meta,
-                )
-                print(f"  inserted X-ray {fname} → patient {patient_id} ({len(data)} bytes)")
-        else:
-            print("  no --xrays dir given; skipping image seed (upload via UI)")
-
-        print("Seed complete.")
+        # insert fresh ECG for Ravi Iyer
+        data = generate_ecg_csv(heart_rate=TARGET_BPM)
+        meta = json.dumps({
+            "file_name": TARGET_FNAME,
+            "mime_type": "text/csv",
+            "file_size_bytes": len(data),
+            "sample_rate": 500,
+            "duration_sec": 10,
+            "lead_count": 1,
+            "heart_rate_bpm": TARGET_BPM,
+        })
+        await conn.execute(
+            "INSERT INTO ecg_audio_record (patient_id, record_data, metadata) VALUES ($1, $2, $3)",
+            TARGET_PATIENT_ID, data, meta,
+        )
+        print(f"  inserted ECG {TARGET_FNAME} → patient {TARGET_PATIENT_ID} ({len(data)} bytes)")
+        print("Done.")
     finally:
         await conn.close()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--xrays", default=None, help="Directory containing JPEG/PNG X-ray files")
-    args = parser.parse_args()
-    asyncio.run(seed(args.xrays))
+    asyncio.run(reset_and_seed())
