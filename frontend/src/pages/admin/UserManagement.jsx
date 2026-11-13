@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { usersAPI } from '../../services/api'
+import { usersAPI, patientsAPI, professionalsAPI } from '../../services/api'
 
 const ROLES = ['admin', 'doctor', 'lab_technician', 'patient']
 
@@ -10,12 +10,18 @@ export default function UserManagement() {
   const [form, setForm] = useState({ email: '', password: '', role: 'patient', linked_id: '' })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [patients, setPatients] = useState([])
+  const [professionals, setProfessionals] = useState([])
 
   function load() {
     usersAPI.list().then(r => setUsers(r.data)).catch(() => {}).finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    patientsAPI.list().then(r => setPatients(r.data)).catch(() => {})
+    professionalsAPI.list().then(r => setProfessionals(r.data)).catch(() => {})
+  }, [])
 
   async function handleCreate(e) {
     e.preventDefault()
@@ -65,14 +71,35 @@ export default function UserManagement() {
             <div>
               <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Role *</label>
               <select className="w-full border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
-                value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
+                value={form.role} onChange={e => setForm({ ...form, role: e.target.value, linked_id: '' })}>
                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Linked ID</label>
-              <input className="w-full border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400" placeholder="patient/professional ID"
-                value={form.linked_id} onChange={e => setForm({ ...form, linked_id: e.target.value })} />
+              <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+                {form.role === 'patient' ? 'Linked Patient' : form.role === 'admin' ? 'No Link Required' : 'Linked Professional'}
+              </label>
+              {form.role === 'patient' ? (
+                <select className="w-full border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  value={form.linked_id} onChange={e => setForm({ ...form, linked_id: e.target.value })}>
+                  <option value="">Select patient…</option>
+                  {patients.map(p => <option key={p.patient_id} value={p.patient_id}>{p.full_name} (#{p.patient_id})</option>)}
+                </select>
+              ) : form.role === 'doctor' ? (
+                <select className="w-full border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  value={form.linked_id} onChange={e => setForm({ ...form, linked_id: e.target.value })}>
+                  <option value="">Select doctor…</option>
+                  {professionals.filter(p => p.role === 'Doctor').map(p => <option key={p.professional_id} value={p.professional_id}>{p.full_name} (#{p.professional_id})</option>)}
+                </select>
+              ) : form.role === 'lab_technician' ? (
+                <select className="w-full border border-slate-300 rounded px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  value={form.linked_id} onChange={e => setForm({ ...form, linked_id: e.target.value })}>
+                  <option value="">Select lab technician…</option>
+                  {professionals.filter(p => p.role === 'Lab Technician').map(p => <option key={p.professional_id} value={p.professional_id}>{p.full_name} (#{p.professional_id})</option>)}
+                </select>
+              ) : (
+                <input disabled className="w-full border border-slate-200 rounded px-3 py-2 text-sm text-slate-400 bg-slate-50" placeholder="N/A" />
+              )}
             </div>
           </div>
           <button type="submit" className="mt-4 bg-slate-700 hover:bg-slate-800 text-white px-5 py-2 rounded text-sm font-medium transition-colors">
