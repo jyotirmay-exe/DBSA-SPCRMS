@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useTheme } from '../contexts/ThemeContext'
 
 const ROLE_HOME = {
   admin: '/admin/dashboard',
@@ -11,6 +12,7 @@ const ROLE_HOME = {
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const { dark, toggle } = useTheme()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,35 +34,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="bg-white border border-slate-200 rounded-xl p-8 w-full max-w-sm shadow-sm">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-slate-800">SPCRMS</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Hospital Records Management</p>
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-8 w-full max-w-sm shadow-sm">
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-800 dark:text-slate-100">SPCRMS</h1>
+            <p className="text-sm text-slate-500 mt-0.5">Hospital Records Management</p>
+          </div>
+          <button onClick={toggle} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs mt-1">
+            {dark ? '☀' : '☾'}
+          </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5 uppercase tracking-wide">Email</label>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Email</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="border border-slate-300 rounded px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800 placeholder-slate-400"
+              className="border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800 placeholder-slate-400"
               placeholder="you@hospital.org"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1.5 uppercase tracking-wide">Password</label>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">Password</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="border border-slate-300 rounded px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
+              className="border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded px-3 py-2 text-sm w-full focus:outline-none focus:ring-1 focus:ring-slate-400 text-slate-800"
             />
           </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={loading}
