@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { labInvestigationsAPI, labResultsAPI } from '../../services/api'
 import Breadcrumb from '../../components/Breadcrumb'
+import PatientMediaViewer from '../shared/PatientMediaViewer'
 
 const STATUS = {
   Pending: 'bg-amber-50 text-amber-700',
@@ -86,6 +87,12 @@ export default function LabInvestigationDetail() {
           <p className="text-slate-400 text-sm">No result recorded yet.</p>
         )}
       </div>
+
+      {investigation.patient_id && (
+        <div className="bg-white border border-slate-200 rounded-lg p-5 mt-6">
+          <PatientMediaViewer patientId={investigation.patient_id} />
+        </div>
+      )}
     </div>
   )
 }

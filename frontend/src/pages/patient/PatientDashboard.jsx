@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { appointmentsAPI, labInvestigationsAPI } from '../../services/api'
 import Breadcrumb from '../../components/Breadcrumb'
+import PatientMediaViewer from '../shared/PatientMediaViewer'
 
 const STATUS = {
   Scheduled: 'bg-blue-50 text-blue-700',
@@ -120,6 +121,13 @@ export default function PatientDashboard() {
             </table>
           </div>
         )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-base font-semibold text-slate-700 mb-3">My Imaging & ECG Records</h2>
+        <div className="bg-white border border-slate-200 rounded-lg p-5">
+          {patientId && <PatientMediaViewer patientId={patientId} />}
+        </div>
       </section>
     </div>
   )

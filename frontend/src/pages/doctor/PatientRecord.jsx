@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { patientsAPI, diagnosesAPI, prescriptionsAPI, labInvestigationsAPI, appointmentsAPI } from '../../services/api'
 import Breadcrumb from '../../components/Breadcrumb'
+import PatientMediaViewer from '../shared/PatientMediaViewer'
 
 const STATUS = {
   Scheduled: 'bg-blue-50 text-blue-700',
@@ -134,6 +135,10 @@ export default function PatientRecord() {
             ))}
           </div>
         )}
+      </Section>
+
+      <Section title="Medical Images & ECG">
+        <PatientMediaViewer patientId={parseInt(id)} />
       </Section>
     </div>
   )

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.db import get_pool, close_pool
 from app.routers import auth, patients, professionals, appointments, diagnoses, prescriptions, lab_investigations, lab_results, clinical_records, notifications
+from app.routers import medical_images, ecg_records
 
 
 @asynccontextmanager
@@ -47,6 +48,8 @@ app.include_router(lab_investigations.router)
 app.include_router(lab_results.router)
 app.include_router(clinical_records.router)
 app.include_router(notifications.router)
+app.include_router(medical_images.router)
+app.include_router(ecg_records.router)
 
 
 @app.get("/health")
